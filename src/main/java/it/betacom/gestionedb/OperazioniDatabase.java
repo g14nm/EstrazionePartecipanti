@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -32,7 +33,7 @@ public class OperazioniDatabase {
 			ResultSet resultSet = null;
 			Connection connection = null;
 			try {
-				connection = DBHandler.getInstance().getConnessione();
+				connection = DBHandler.getInstance().apriAndGetConnessione();
 				connection.setAutoCommit(false);
 				statement = connection.createStatement();
 				statement.execute("CREATE TABLE partecipanti ("
@@ -46,7 +47,7 @@ public class OperazioniDatabase {
 						+ "data_estrazione TIMESTAMP NOT NULL,"
 						+ "PRIMARY KEY (id))");
 				logger.debug("create tabelle \"partecipanti\" e \"estrazioni\"");
-				inserisciInTabellaPartecipantiDaCSV(statement);
+				inserisciInTabellaPartecipantiDaCSV();
 				connection.commit();
 				System.out.println("Inizializzazione avvenuta correttamente");
 			} catch (SQLException e) {
@@ -67,7 +68,7 @@ public class OperazioniDatabase {
 		Statement statement = null;
 		ResultSet resultSet = null;
 		try {
-			statement = DBHandler.getInstance().getConnessione().createStatement();
+			statement = DBHandler.getInstance().apriAndGetConnessione().createStatement();
 			resultSet = statement.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'partecipanti'");
 			resultSet.next();
 			if(resultSet.getInt(1) == 0) return false;
@@ -85,19 +86,27 @@ public class OperazioniDatabase {
 	}
 	
 	//inserisce nella tabella "partecipanti" i dati letti da file CSV 
-	private static void inserisciInTabellaPartecipantiDaCSV(Statement statement) throws SQLException{
+	private static void inserisciInTabellaPartecipantiDaCSV() throws SQLException{
 		BufferedReader br = new BufferedReader(new InputStreamReader(OperazioniDatabase.class.getClassLoader().getResourceAsStream(FILE_PARTECIPANTI)));
+		PreparedStatement statement = null;
 		try {
 			String riga = br.readLine();
 			while(riga != null) {
 				String[] campi = riga.split(";");
-				statement.execute("INSERT INTO partecipanti (nome, sede) VALUES ('" + campi[0] + "', '" + campi[1] + "')");
+				statement = DBHandler.getInstance().getConnessione().prepareStatement(
+						"INSERT INTO partecipanti (nome, sede) VALUES (?, ?)");
+				statement.setString(1, campi[0]);
+				statement.setString(2, campi[1]);
+				statement.executeUpdate();
 				logger.debug("inserito nella tabella \"partecipanti\" il record: " + campi[0] + ", " + campi[1]);
 				riga = br.readLine();
 			}
 		} catch (IOException e) {
 			logger.error(e.getMessage());
 			System.out.println(ERRORE);
+		}
+		finally {
+			if(statement != null) try {statement.close();} catch (SQLException e) {logger.error(e.getMessage()); System.out.println(ERRORE);}
 		}
 	}
 	
@@ -109,7 +118,7 @@ public class OperazioniDatabase {
 			Connection connection = null;
 			Statement statement = null;
 			try {
-				connection = DBHandler.getInstance().getConnessione();
+				connection = DBHandler.getInstance().apriAndGetConnessione();
 				connection.setAutoCommit(false);
 				statement = connection.createStatement();
 				statement.execute("DROP TABLE IF EXISTS partecipanti");
@@ -137,7 +146,7 @@ public class OperazioniDatabase {
 			Statement statement = null;
 			ResultSet resultSet = null;
 			try {
-				statement = DBHandler.getInstance().getConnessione().createStatement();
+				statement = DBHandler.getInstance().apriAndGetConnessione().createStatement();
 				//conta i partecipanti
 				resultSet = statement.executeQuery("SELECT COUNT(*) FROM partecipanti");
 				resultSet.next();
@@ -169,7 +178,7 @@ public class OperazioniDatabase {
 		Statement statement = null;
 		ResultSet resultSet = null;
 		try {
-			statement = DBHandler.getInstance().getConnessione().createStatement();
+			statement = DBHandler.getInstance().apriAndGetConnessione().createStatement();
 			resultSet = statement.executeQuery(
 					"SELECT nome_estratto, COUNT(*) AS numero_estrazioni, MAX(data_estrazione) AS data_ultima_estrazione "
 							+ "FROM estrazioni "

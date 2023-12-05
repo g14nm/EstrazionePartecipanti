@@ -47,7 +47,7 @@ public class DBHandler {
 		return instance;
 	}
 
-	public Connection getConnessione() {
+	public Connection apriAndGetConnessione() {
 		try {
 			this.connection = DriverManager.getConnection(this.connectionUrlAndSchema, this.user, this.password);
 			logger.debug("avviata connessione a " + this.connectionUrlAndSchema);
@@ -58,15 +58,21 @@ public class DBHandler {
 			return null;
 		}
 	}
+	
+	public Connection getConnessione() {
+		return this.connection;
+	}
 
 	public void chiudiConnessione() {
-		try {
-			this.connection.close();
-			logger.debug("terminata connessione a " + this.connectionUrlAndSchema);
-		} catch (SQLException e) {
-			logger.error(e.getMessage());
-			System.out.println(ERRORE);
-		};
+		if(this.connection != null) {
+			try {
+				this.connection.close();
+				logger.debug("terminata connessione a " + this.connectionUrlAndSchema);
+			} catch (SQLException e) {
+				logger.error(e.getMessage());
+				System.out.println(ERRORE);
+			};
+		}
 	}
 
 }
